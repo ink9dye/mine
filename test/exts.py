@@ -1,5 +1,8 @@
-from flask_sqlalchemy import SQLAlchemy
-from flask_mail import Mail
-#为了解决循环引用而出现的文件
+from flask_sqlalchemy import SQLAlchemy  # 导入 Flask-SQLAlchemy，用于数据库操作
+from flask_mail import Mail  # 导入 Flask-Mail，用于发送电子邮件
+
+# 创建 SQLAlchemy 实例
 db = SQLAlchemy()
+
+# 创建 Mail 实例
 mail = Mail()
