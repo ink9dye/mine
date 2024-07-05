@@ -7,6 +7,7 @@ from blueprints.qa import bp as qa_bp  # 导入 qa 蓝图并重命名为 qa_bp
 from exts import db, mail  # 从 exts 模块导入 db 和 mail
 from models import UserModel  # 从 models 模块导入 UserModel
 import sys
+from flask_cors import CORS
 
 app = Flask(__name__)  # 创建 Flask 应用实例
 app.config.from_object(config.DevelopmentConfig)  # 加载开发环境配置
@@ -20,7 +21,7 @@ mail.init_app(app)
 
 # 创建数据库迁移对象
 migrate = Migrate(app, db)
-
+CORS(app)  # 允许跨域请求
 # 注册蓝图
 app.register_blueprint(auth_bp)  # 注册 auth 蓝图
 app.register_blueprint(qa_bp)  # 注册 qa 蓝图

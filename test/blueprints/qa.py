@@ -1,49 +1,52 @@
-from flask import Blueprint, request, render_template, g, redirect, url_for, flash
+from flask import Blueprint, request, render_template, g, redirect, url_for, flash  # 导入 Flask 所需的模块和函数
 
-from decorators import login_required
-from exts import db
-from models import QuestionModel, AnswerModel
-from .forms import QuestionForm, AnswerForm
+from decorators import login_required  # 导入自定义的 login_required 装饰器，用于保护需要登录的路由
+from exts import db  # 从扩展模块导入数据库实例
+from models import QuestionModel, AnswerModel  # 导入数据库模型 QuestionModel 和 AnswerModel
+from .forms import QuestionForm, AnswerForm  # 从当前目录下导入表单类
 
-# 移除蓝图的URL前缀设置
-bp = Blueprint("qa", __name__)
+# 移除蓝图的URL前缀设置，创建一个命名为 "qa" 的蓝图对象，URL 前缀为 "/"
+bp = Blueprint("qa", __name__, url_prefix="/")
 
 
-# 首页路由，不添加'qa'前缀
+# 首页路由，不添加 'qa' 前缀
 @bp.route("/")
 def index():
+    # 查询所有问题，并按创建时间倒序排列
     questions = QuestionModel.query.order_by(QuestionModel.create_time.desc()).all()  # 倒序，最新的在上面
+    # 渲染 index.html 模板，并传递查询到的问题列表
     return render_template("index.html", questions=questions)
 
 
-# 发布问答路由，手动添加'qa'前缀
+# 发布问答路由，手动添加 'qa' 前缀
 @bp.route("/qa/public", methods=['GET', 'POST'])
-@login_required
+@login_required  # 使用自定义装饰器保护路由，要求用户登录
 def public_question():
-    # 对于GET请求，应该实例化QuestionForm，而不是AnswerForm
+    # 对于 GET 请求，实例化 QuestionForm 表单
     form = QuestionForm()  # 正确实例化表单
-    if request.method == 'POST':
-        # 注意，这里不需要重新实例化form，因为我们已经在函数开始处实例化了
+    if request.method == 'POST':  # 如果是 POST 请求
+        # 注意，这里不需要重新实例化 form，因为我们已经在函数开始处实例化了
         if form.validate_on_submit():  # 这里改为使用 validate_on_submit() 更加适合 Flask-WTF 的使用方式
             title = form.title.data
             content = form.content.data
+            # 创建一个新的问题实例，并设置属性
             question = QuestionModel(title=title, content=content, author_id=g.user.id)
-            db.session.add(question)
-            db.session.commit()
-            return redirect(url_for("qa.index"))
+            db.session.add(question)  # 添加到数据库会话
+            db.session.commit()  # 提交会话，保存到数据库
+            return redirect(url_for("qa.index"))  # 重定向到首页
         else:
             # 如果表单验证失败，将会重新渲染页面并显示错误
             print(form.errors)
-    # 对于GET请求或表单验证失败的情况，都将执行下面的代码渲染模板
-    return render_template("public_question.html", form=form)
+    # 对于 GET 请求或表单验证失败的情况，都将执行下面的代码渲染模板
+    return render_template("public_question.html", form=form)  # 渲染发布问题页面，并传递表单实例
 
 
 # 问答详情路由，不需要登录
 @bp.route("/qa/detail/<int:qa_id>", methods=['GET'])
 def qa_detail(qa_id):
-    # 根据传入的问题ID从数据库中查找对应的问题，如果找不到则返回404错误
+    # 根据传入的问题 ID 从数据库中查找对应的问题，如果找不到则返回 404 错误
     question = QuestionModel.query.get_or_404(qa_id)
-    # 创建一个AnswerForm实例，用于在详情页面上渲染回答提交表单
+    # 创建一个 AnswerForm 实例，用于在详情页面上渲染回答提交表单
     form = AnswerForm()
     # 使用渲染的模板、问题实例和表单实例作为上下文，渲染问题详情页面
     return render_template("detail.html", question=question, form=form)
@@ -51,21 +54,18 @@ def qa_detail(qa_id):
 
 # 发布回答路由，需要用户登录
 @bp.route("/answer/public", methods=['POST'])
-@login_required
+@login_required  # 使用自定义装饰器保护路由，要求用户登录
 def public_answer():
-    # 创建AnswerForm实例，使用请求的表单数据初始化
+    # 创建 AnswerForm 实例，使用请求的表单数据初始化
     form = AnswerForm(request.form)
-    # 验证表单数据。注意：这里使用validate_on_submit()可能是一个错误，因为它是FlaskForm的方法，而不是WTForms的Form，除非AnswerForm确实继承自FlaskForm
+    # 验证表单数据。注意：这里使用 validate_on_submit() 可能是一个错误，因为它是 FlaskForm 的方法，而不是 WTForms 的 Form，除非 AnswerForm 确实继承自 FlaskForm
     if form.validate_on_submit():  # 如果表单数据验证通过
-        # 创建一个新的AnswerModel实例，使用表单提交的数据
+        # 创建一个新的 AnswerModel 实例，使用表单提交的数据
         new_answer = AnswerModel(content=form.content.data, question_id=form.question_id.data, author_id=g.user.id)
-        # 将新回答添加到数据库会话并提交以保存到数据库
-        db.session.add(new_answer)
-        db.session.commit()
-        # 显示成功提交的闪现消息
-        flash('回答已成功提交。', 'success')
-        # 重定向到问题详情页面，以便用户可以看到他们的新回答
-        return redirect(url_for('qa.qa_detail', qa_id=form.question_id.data))
+        db.session.add(new_answer)  # 将新回答添加到数据库会话
+        db.session.commit()  # 提交会话，保存到数据库
+        flash('回答已成功提交。', 'success')  # 显示成功提交的闪现消息
+        return redirect(url_for('qa.qa_detail', qa_id=form.question_id.data))  # 重定向到问题详情页面
     else:  # 如果表单数据验证未通过
         # 遍历所有表单字段的错误消息，并为每个错误显示一个闪现消息
         for fieldName, errorMessages in form.errors.items():
@@ -86,7 +86,7 @@ def search():
 
 
 @bp.route("/my-questions")
-@login_required
+@login_required  # 使用自定义装饰器保护路由，要求用户登录
 def my_questions():
     if g.user:
         user_id = g.user.id
