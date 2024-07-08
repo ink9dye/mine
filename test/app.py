@@ -1,13 +1,14 @@
-from flask import Flask, session, g  # 导入 Flask、session 和 g 对象
+from flask import Flask, session,request, g,jsonify  # 导入 Flask、session 和 g 对象
 from flask_migrate import Migrate  # 导入 Flask-Migrate，用于数据库迁移
-from sqlalchemy import text,inspect  # 导入 sqlalchemy.text
+from sqlalchemy import text, inspect  # 导入 sqlalchemy.text
 import config  # 导入配置模块
 from blueprints.auth import bp as auth_bp  # 导入 auth 蓝图并重命名为 auth_bp
 from blueprints.qa import bp as qa_bp  # 导入 qa 蓝图并重命名为 qa_bp
 from exts import db, mail  # 从 exts 模块导入 db 和 mail
 from models import UserModel  # 从 models 模块导入 UserModel
-import sys
+import sys, os
 from flask_cors import CORS
+import functools  # 导入 functools 模块，用于创建装饰器
 
 app = Flask(__name__)  # 创建 Flask 应用实例
 app.config.from_object(config.DevelopmentConfig)  # 加载开发环境配置
@@ -36,13 +37,40 @@ def load_user():
         # 检查是否成功从 session 中获取到 user_id。如果获取到，表示用户可能已登录。
         if not hasattr(g, 'user'):
             # 检查 g 对象（每个请求都有一个独立的 g 对象）是否已经设置了 user 属性。
-            # 这是为了避免在同一个请求中多次从数据库加载用户信息。
+            # 使用了 hasattr 来检查 g 对象是否已经具有 user 属性，以避免同一个请求重复从数据库加载用户信息。
             g.user = db.session.get(UserModel, user_id)
             # 如果 g 对象尚未有 user 属性，从数据库中加载对应 user_id 的用户对象，并
             # 将其设置给 g.user。这样，应用的其他部分就可以直接使用 g.user 访问当前用户信息。
     else:
         g.user = None
         # 如果 session 中没有 user_id，将 g.user 设置为 None，表示当前没有用户登录。
+
+
+def login_required(view):
+    """
+    登录保护装饰器。
+    用于保护视图函数，确保只有已登录用户才能访问。
+    """
+    # 要用就是@login_required
+    # @login_required 是一个装饰器，用于保护视图函数，确保只有已登录用户才能访问。
+    @functools.wraps(view)
+    def wrapped_view(**kwargs):
+        # functools.wraps 是一个装饰器，它会更新 wrapped_view 函数的属性，使其看起来像是原始的 view 函数。
+        # 这包括复制原始函数的名称、模块、注释文档等，有助于调试和文档生成。
+
+        if g.user is None:
+            # 检查全局对象 g 中是否有 user 属性，判断用户是否已登录。
+            # g 是一个 Flask 上下文全局变量，独立于每个请求。
+
+            return jsonify({'error': 'Unauthorized', 'message': 'Please log in to access this resource'}), 401
+            # 如果 g.user 是 None，说明用户没有登录，返回 JSON 格式的错误响应，状态码为 401 (Unauthorized)。
+
+        return view(**kwargs)
+        # 如果 g.user 不是 None，说明用户已登录，执行被装饰的视图函数，并传递任何关键字参数。
+
+    return wrapped_view
+    # 返回 wrapped_view 函数，该函数会在每次调用时首先检查用户是否已登录，然后决定是否调用原始视图函数。
+
 
 # 测试数据库是否已经连接
 def check_database_connection():
