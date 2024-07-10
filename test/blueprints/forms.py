@@ -8,6 +8,8 @@ from models import UserModel
 
 # 注册表单类
 class RegisterForm(FlaskForm):
+    # class Meta:
+    #     csrf = False  # 禁用 CSRF
     # 邮箱字段，验证器包括邮箱格式和输入不能为空
     email = StringField('Email', validators=[
         Email(message="邮箱格式错误！"),  # 验证邮箱格式
@@ -46,6 +48,8 @@ class RegisterForm(FlaskForm):
 
 # 登录表单类
 class LoginForm(FlaskForm):
+    # class Meta:
+    #     csrf = False  # 禁用 CSRF
     # 邮箱字段，验证器包括邮箱格式和输入不能为空
     email = StringField('邮箱', validators=[Email(), InputRequired()])
 
@@ -61,6 +65,8 @@ class LoginForm(FlaskForm):
 
 # 问题表单类
 class QuestionForm(FlaskForm):
+    # class Meta:
+    #     csrf = False  # 禁用 CSRF
     # 标题字段，验证器包括长度最小为1和输入不能为空
     title = StringField('Title', validators=[Length(min=1), InputRequired()])
 
@@ -70,6 +76,8 @@ class QuestionForm(FlaskForm):
 
 # 回答表单类
 class AnswerForm(FlaskForm):
+    # class Meta:
+    #     csrf = False  # 禁用 CSRF
     # 问题ID字段，整数类型，验证器包括输入不能为空
     question_id = IntegerField('Question ID', validators=[InputRequired()])
 
